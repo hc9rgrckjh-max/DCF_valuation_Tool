@@ -35,6 +35,32 @@ const ChartPurpose = ({ title, desc, insight }: { title: string; desc: string; i
 );
 
 export const ChartsSection = ({ inputs, result, lang }: Props) => {
+  const pvData = useMemo(
+    () =>
+      result
+        ? [
+            ...result.rows.map((r) => ({ name: `Y${r.year}`, value: r.pvFCF, type: "fcf" as const })),
+            { name: "TV", value: result.pvTerminalValue, type: "tv" as const },
+          ]
+        : [],
+    [result]
+  );
+  const grid = useMemo(() => generateSensitivityGrid(inputs), [inputs]);
+  type WFRow = { name: string; start: number; value: number; kind: "year" | "tv" | "ev" };
+  const waterfall = useMemo<WFRow[]>(() => {
+    if (!result) return [];
+    let cum = 0;
+    const arr: WFRow[] = result.rows.map((r) => {
+      const start = cum;
+      cum += r.pvFCF;
+      return { name: `Y${r.year}`, start, value: r.pvFCF, kind: "year" };
+    });
+    arr.push({ name: "TV", start: cum, value: result.pvTerminalValue, kind: "tv" });
+    cum += result.pvTerminalValue;
+    arr.push({ name: "EV", start: 0, value: cum, kind: "ev" });
+    return arr;
+  }, [result]);
+
   if (!result) {
     return (
       <div className="text-sm text-muted-foreground p-8 text-center border border-dashed border-border rounded-sm">
@@ -42,37 +68,11 @@ export const ChartsSection = ({ inputs, result, lang }: Props) => {
       </div>
     );
   }
-
-  // Chart 1 data
-  const pvData = useMemo(
-    () => [
-      ...result.rows.map((r) => ({ name: `Y${r.year}`, value: r.pvFCF, type: "fcf" })),
-      { name: "TV", value: result.pvTerminalValue, type: "tv" },
-    ],
-    [result]
-  );
   const tvPct = (result.pvTerminalValue / result.enterpriseValue) * 100;
-
-  // Sensitivity
-  const grid = useMemo(() => generateSensitivityGrid(inputs), [inputs]);
   const flatVals = grid.flat().map((c) => c.intrinsicValue).filter((v): v is number => v !== null);
-  const minV = Math.min(...flatVals);
-  const maxV = Math.max(...flatVals);
-  const swing = ((maxV - minV) / minV) * 100;
-
-  // Waterfall (cumulative stacked bars)
-  const waterfall = useMemo(() => {
-    let cum = 0;
-    const arr = result.rows.map((r) => {
-      const start = cum;
-      cum += r.pvFCF;
-      return { name: `Y${r.year}`, start, value: r.pvFCF, kind: "year" as const };
-    });
-    arr.push({ name: "TV", start: cum, value: result.pvTerminalValue, kind: "tv" as const });
-    cum += result.pvTerminalValue;
-    arr.push({ name: "EV", start: 0, value: cum, kind: "ev" as const });
-    return arr;
-  }, [result]);
+  const minV = flatVals.length ? Math.min(...flatVals) : 0;
+  const maxV = flatVals.length ? Math.max(...flatVals) : 0;
+  const swing = minV ? ((maxV - minV) / minV) * 100 : 0;
 
   return (
     <div className="space-y-4 animate-fade-in">
