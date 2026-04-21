@@ -1,0 +1,4 @@
+project_id = "lryxqkzrnaqhmeylypwn"
+
+[functions.fetch-live-data]
+verify_jwt = false
