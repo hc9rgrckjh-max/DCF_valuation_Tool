@@ -1,27 +1,23 @@
 /**
  * Maps raw Yahoo Finance industry/sector strings to the fixed INDUSTRY_KEYS
  * used by the DCF tool's Select dropdown.
- *
- * Yahoo Finance returns values like:
- *   "Software—Application", "Consumer Electronics", "Oil & Gas E&P",
- *   "Drug Manufacturers—General", "Banks—Diversified", "REIT—Industrial", …
- *
- * We normalize to the closest canonical bucket using keyword matching.
- * Falls back to "Industrials" if nothing matches (reasonable default).
  */
 
 import { INDUSTRY_KEYS } from "@/lib/constants";
 
 type IndustryKey = (typeof INDUSTRY_KEYS)[number];
 
-/** Lower-cased keyword fragments → canonical bucket */
+/** * Lower-cased keyword fragments → canonical bucket.
+ * L'ordine è importante: le categorie più specifiche o "pesanti" (come Technology) 
+ * dovrebbero stare in alto.
+ */
 const RULES: Array<{ keywords: string[]; bucket: IndustryKey }> = [
   {
     keywords: [
       "software", "technology", "semiconductor", "tech", "internet",
-      "electronic component", "computer", "telecom", "communication",
-      "information", "it service", "data processing", "cloud", "ai",
-      "artificial intelligence", "cybersecurity",
+      "electronic", "electronics", "computer", "hardware", "telecom", 
+      "communication", "information", "it service", "data processing", 
+      "cloud", "ai", "artificial intelligence", "cybersecurity",
     ],
     bucket: "Technology",
   },
@@ -79,11 +75,14 @@ export function mapYahooIndustry(raw: string | undefined | null): IndustryKey {
 
   const lower = raw.toLowerCase();
 
+  // Cerchiamo una corrispondenza nelle regole
   for (const { keywords, bucket } of RULES) {
     if (keywords.some((kw) => lower.includes(kw))) {
       return bucket;
     }
   }
 
-  return "Industrials"; // safe fallback
+  // Se è un ticker tecnologico che è sfuggito (es. semiconduttori specifici), 
+  // facciamo un ultimo controllo manuale o usiamo Industrials come fallback.
+  return "Industrials"; 
 }
